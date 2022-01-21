@@ -30,9 +30,76 @@ WHERE MSG_QTY=(SELECT MAX(MSG_QTY) FROM ((SELECT from_user_id, to_user_id, count
 
 
 -- 2. Подсчитать общее количество лайков, которые получили пользователи младше 10 лет..
-
 -- Вообще, в базе нет пользователей младше 14. Поэтому сделаю <=14
+
+-- Список пользователей младше 14
 SELECT user_id, TIMESTAMPDIFF(YEAR, birthday, NOW()) as AGE FROM profiles WHERE TIMESTAMPDIFF(YEAR, birthday, NOW()) <=14 ORDER BY AGE DESC;
 
+SELECT count(*) as TOTAL_LIKES_QTY from likes where media_id IN 
+(SELECT id FROM media WHERE user_id IN
+(SELECT user_id FROM profiles WHERE TIMESTAMPDIFF(YEAR, birthday, NOW()) <=14));
+
+
+-- 3. Определить кто больше поставил лайков (всего): мужчины или женщины.
+
+-- ОПРЕДЕЛИМ, КТО СКОЛЬКО ПОСТАВИЛ ЛАЙКОВ
+-- Вариант 1, который от меня ждут, через UNION
+SELECT 'MALE' as GENDER, COUNT(*) LIKES_QTY FROM likes WHERE user_id IN
+(SELECT user_id from profiles where gender='m')
+UNION 
+SELECT 'FEMALE' as GENDER, COUNT(*) LIKES_QTY FROM likes WHERE user_id IN
+(SELECT user_id from profiles where gender='f')
+;
+
+-- Вариант 2, через JOIN
 SELECT 
-((SELECT user_id FROM profiles WHERE TIMESTAMPDIFF(YEAR, birthday, NOW()) <=14) as user_ids);
+CASE (p.gender)
+	WHEN 'm' THEN 'MALE'
+	WHEN 'f' THEN 'FEMALE'
+	END AS GENDER,
+COUNT(*)
+from likes l
+LEFT JOIN profiles p ON l.user_id=p.user_id
+GROUP BY gender;
+
+-- ТЕПЕРЬ ВЫВЕДЕМ ПРОСТО ОТВЕТ
+-- Варинант 1-1. Через IF
+SELECT IF(
+(SELECT COUNT(*) FROM likes WHERE user_id IN
+(SELECT user_id from profiles where gender='m')
+)
+>
+(SELECT COUNT(*) FROM likes WHERE user_id IN
+(SELECT user_id from profiles where gender='f')
+),'Мужчины','Женщины');
+
+-- Вариант 1-2. Через MAX после UNION
+SELECT ANY_VALUE(GENDER) GENDER, MAX(LIKES_QTY) from 
+(SELECT 'MALE' as GENDER, COUNT(*) LIKES_QTY FROM likes WHERE user_id IN
+(SELECT user_id from profiles where gender='m')
+UNION 
+SELECT 'FEMALE' as GENDER, COUNT(*) LIKES_QTY FROM likes WHERE user_id IN
+(SELECT user_id from profiles where gender='f')) as A1;
+
+-- Вариант 2. Через MAX после JOIN
+SELECT GENDER FROM
+(SELECT 
+CASE (p.gender)
+	WHEN 'm' THEN 'MALE'
+	WHEN 'f' THEN 'FEMALE'
+	END AS GENDER,
+COUNT(*) LIKES_QTY
+from likes l
+LEFT JOIN profiles p ON l.user_id=p.user_id
+GROUP BY gender) AS T2 
+WHERE LIKES_QTY =
+(SELECT MAX(LIKES_QTY) FROM
+(SELECT 
+CASE (p.gender)
+	WHEN 'm' THEN 'MALE'
+	WHEN 'f' THEN 'FEMALE'
+	END AS GENDER,
+COUNT(*) LIKES_QTY
+from likes l
+LEFT JOIN profiles p ON l.user_id=p.user_id
+GROUP BY gender) AS T2);
