@@ -62,7 +62,7 @@ SELECT * FROM supp_agr_projects;
 -- Хранимая процедура / функция / триггер (на выбор, 1 шт.);
 
 -- 1. Процедура по удалению проектов документов старше 31 дней
--- Плюс добавим транзационность и возврат информации об ошибке.
+-- Плюс добавим транзакционность и возврат информации об ошибке.
 DROP PROCEDURE IF EXISTS pr_delete_old_projects;
 
 DELIMITER //
@@ -83,7 +83,7 @@ BEGIN
 	DECLARE `qty` BIGINT(100) UNSIGNED;
 	START TRANSACTION;
 
-	DELETE FROM documents WHERE DATEDIFF(CURRENT_DATE() ,created_at)>31;
+	DELETE FROM documents WHERE DATEDIFF(CURRENT_DATE() ,created_at)>31 and status_id=3;
 
 	IF `_rollback` THEN
 	    	ROLLBACK;
